@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Stage Jump Betting Game — Tiles & Bombs</title>
+  <style>
+    :root { --bg:#0f1221; --panel:#141833; --panel-2:#1b1f44; --text:#e8eaf6; --muted:#aab0d6; --accent:#7c4dff; --accent-2:#00e5ff; --warn:#ffa000; --border:#242a5e; --win:#00c853; --lose:#ff5252; }
+    *{ box-sizing:border-box } html,body{ height:100% }
+    body{ margin:0; font-family:ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Noto Sans KR,Apple SD Gothic Neo,Helvetica,Arial;
+      background: radial-gradient(1200px 800px at 80% -20%, rgba(124,77,255,.15), transparent),
+                  radial-gradient(1000px 600px at -10% 120%, rgba(0,229,255,.15), transparent), var(--bg); color:var(--text) }
+    .wrap{ max-width:980px; margin:24px auto; padding:16px }
+    .card{ background:linear-gradient(180deg,var(--panel),var(--panel-2)); border:1px solid var(--border); border-radius:16px; padding:16px; box-shadow:0 10px 30px rgba(0,0,0,.35) }
+    h1{ margin:0 0 12px; font-size:24px; letter-spacing:-.2px } .sub{ color:var(--muted); font-size:13px; margin-bottom:16px }
+    .row{ display:grid; grid-template-columns:1fr auto auto; gap:12px; align-items:end }
+    label{ font-size:12px; color:var(--muted); margin-bottom:6px; display:block }
+    input[type=number]{ width:100%; padding:12px 14px; font-size:16px; color:var(--text); background:#0c0f25; border:1px solid var(--border); border-radius:12px }
+    input[type=number]:disabled{ opacity:.6 }
+    button{ padding:12px 16px; border-radius:12px; border:1px solid var(--border); background:#11163a; color:#e8eaf6; font-weight:600; cursor:pointer; transition:transform .06s ease }
+    button:hover{ transform:translateY(-1px) } .primary{ background:linear-gradient(135deg,var(--accent),#5b3bd6) }
+    .secondary{ background:linear-gradient(135deg,var(--accent-2),#0097a7); color:#00131a } .ghost{ background:transparent }
+    button:disabled{ opacity:.5; cursor:not-allowed; transform:none }
+
+    .grid{ display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-top:16px; align-items:start }
+    @media(max-width:900px){ .grid{ grid-template-columns:1fr } }
+
+    .play{ border:1px solid var(--border); border-radius:14px; padding:16px; display:flex; flex-direction:column; gap:12px }
+    .status{ display:grid; grid-template-columns:1fr 1fr; gap:10px } .box{ border:1px solid var(--border); border-radius:12px; padding:10px }
+    .title{ font-size:12px; color:var(--muted) } .value{ font-size:20px; margin-top:4px; font-weight:700 }
+    .banner{ border-radius:12px; padding:12px; font-weight:700; text-align:center }
+    .banner.win{ background:rgba(0,200,83,.18); border:1px solid rgba(0,200,83,.5) } .banner.lose{ background:rgba(255,82,82,.18); border:1px solid rgba(255,82,82,.5) }
+    .banner.info{ background:rgba(124,77,255,.18); border:1px solid rgba(124,77,255,.5) }
+
+    .tileboard{ margin:-2px 0 6px; border:1px dashed var(--border); border-radius:12px; padding:12px; background:rgba(255,255,255,.02) }
+    .tilemeta{ font-size:12px; color:var(--muted); margin-bottom:8px; display:flex; gap:10px; justify-content:center }
+    .tilegrid{ display:grid; grid-template-columns: repeat(auto-fit, minmax(56px, 1fr)); gap:10px }
+    .tile{ height:56px; border:1px solid var(--border); border-radius:10px; background:#0c0f25; display:flex; align-items:center; justify-content:center; font-weight:700; cursor:pointer; user-select:none }
+    .tile:hover{ outline:2px solid rgba(124,77,255,.35) }
+    .tile.safe{ background:rgba(0,200,83,.18); border-color:rgba(0,200,83,.55); color:#d8ffdf }
+    .tile.bomb{ background:rgba(255,82,82,.18); border-color:rgba(255,82,82,.55); color:#ffd0d0 }
+
+    .stageboard{ border:1px solid var(--border); border-radius:14px; padding:18px; background:rgba(255,255,255,.02); overflow:hidden }
+    .stagehead{ display:flex; justify-content:space-between; align-items:center; margin-bottom:12px } .stagehead h2{ font-size:16px; margin:0 }
+    .pill{ font-size:12px; padding:6px 10px; border-radius:999px; background:#0e1435; border:1px solid var(--border); color:#aab0d6 }
+    .trackViewport{ width:100%; overflow:auto; position:relative; overscroll-behavior-x:contain }
+    .track{ display:flex; gap:16px; padding:4px 2px; width:max-content; scroll-behavior:smooth }
+    .stageBoxWrap{ position:relative; display:flex; flex-direction:column; align-items:center; gap:8px; padding-top:40px; flex:0 0 88px }
+    .stageBox{ width:72px; height:72px; border:1px solid var(--border); border-radius:12px; background:rgba(255,255,255,.03); display:flex; align-items:center; justify-content:center; font-weight:700; color:#cfd3ff }
+    .stageBox.success{ background:rgba(0,200,83,.18); border-color:rgba(0,200,83,.55); color:#d8ffdf }
+    .stageBox.next{ border:2px solid var(--warn); box-shadow:0 0 0 3px rgba(255,160,0,.2) inset }
+    .mult{ font-size:12px; color:var(--muted) }
+    .avatar{ position:absolute; bottom:84px; width:34px; height:34px; border-radius:50%; border:1px solid var(--border); display:flex; align-items:center; justify-content:center; background:linear-gradient(135deg,var(--accent),var(--accent-2)); color:#00131a; font-size:18px; font-weight:700; box-shadow:0 8px 18px rgba(0,0,0,.35) }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="card">
+      <h1>단계 점프 베팅 게임 <span style="font-size:14px;color:var(--muted)">— 타일 & 폭탄</span></h1>
+      <div class="sub">각 단계에서 <b>타일을 클릭</b>해 도전합니다. 타일을 밟아 폭탄이 아니면 성공! 성공 시 해당 단계의 <b>나머지 타일</b>에 폭탄이 랜덤 배치되어 공개됩니다. 언제든 <b>Cash Out</b> 가능.</div>
+
+      <div class="row">
+        <div>
+          <label>베팅 금액</label>
+          <input id="betInput" type="number" min="1" step="1" value="1000" />
+        </div>
+        <div><button id="startBtn" class="primary">Game Start</button></div>
+        <div><button id="resetBtn" class="ghost" disabled>Reset</button></div>
+      </div>
+
+      <div class="grid">
+        <div class="play">
+          <div class="status">
+            <div class="box"><div class="title">현재 단계</div><div class="value" id="stageVal">-</div></div>
+            <div class="box"><div class="title">Cash Out 시 수령액</div><div class="value" id="cashoutVal">-</div></div>
+          </div>
+          <div id="banner" class="banner info">Game Start 후 타일을 클릭해 도전하세요.</div>
+
+          <div id="tileboard" class="tileboard" style="display:none">
+            <div class="tilemeta">
+              <span id="metaStage">-단계</span>
+              <span>·</span>
+              <span id="metaProb">성공확률 -</span>
+              <span>·</span>
+              <span id="metaTiles">타일 -</span>
+              <span>·</span>
+              <span id="metaBombs">폭탄 -</span>
+            </div>
+            <div id="tilegrid" class="tilegrid"></div>
+          </div>
+
+          <div class="actions">
+            <button id="cashBtn" disabled>Cash Out 💰</button>
+          </div>
+        </div>
+
+        <div class="stageboard">
+          <div class="stagehead"><h2>단계 트랙</h2><span class="pill">가로 스크롤 · 자동 이동</span></div>
+          <div id="trackViewport" class="trackViewport">
+            <div id="track" class="track"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // --- CONFIG ---
+    const MAX_STAGE = 11;
+    // 단계별 성공 확률 (1~11)
+    const PROB =   [0.80, 0.80, 0.75, 0.75, 0.6667, 0.6667, 0.50, 0.3333, 0.3333, 0.25, 0.25];
+    // 유저 누적 배당(해당 단계 도달 시 배수)
+    const USER_MULT = [1.19, 1.48, 1.98, 2.64, 3.96, 5.94, 11.88, 35.63, 106.88, 427.50, 1710.00];
+    // 폭탄/타일 수 (참고 및 UI 용)
+    const BOMBS = [1,1,1,1,1,1,1,2,2,3,3];
+    const TILES = [5,5,4,4,3,3,2,3,3,4,4];
+
+    const cumulativeMultiplier = (stage) => (stage<=0 ? 1 : USER_MULT[stage-1]);
+
+    // --- STATE ---
+    let state = { bet:0, stage:0, running:false, history:Array.from({length:MAX_STAGE},()=>null) };
+
+    // --- DOM ---
+    const betInput = document.getElementById('betInput');
+    const startBtn = document.getElementById('startBtn');
+    const resetBtn = document.getElementById('resetBtn');
+    const cashBtn = document.getElementById('cashBtn');
+    const banner = document.getElementById('banner');
+    const stageVal = document.getElementById('stageVal');
+    const cashoutVal = document.getElementById('cashoutVal');
+    const trackEl = document.getElementById('track');
+    const viewport = document.getElementById('trackViewport');
+    const tileboardEl = document.getElementById('tileboard');
+    const tilegridEl = document.getElementById('tilegrid');
+    const metaStage = document.getElementById('metaStage');
+    const metaProb  = document.getElementById('metaProb');
+    const metaTiles = document.getElementById('metaTiles');
+    const metaBombs = document.getElementById('metaBombs');
+
+    // --- TRACK RENDER ---
+    function renderTrack(){
+      trackEl.innerHTML='';
+      for(let i=1;i<=MAX_STAGE;i++){
+        const wrap=document.createElement('div'); wrap.className='stageBoxWrap'; wrap.dataset.stage=i;
+        const box=document.createElement('div'); box.className='stageBox'; box.textContent=i;
+        if(state.history[i-1]===true || i<=state.stage) box.classList.add('success');
+        if(i===state.stage+1 && state.running) box.classList.add('next');
+        if(i===state.stage && state.stage>0){ const avatar=document.createElement('div'); avatar.className='avatar'; avatar.textContent='🧍'; wrap.appendChild(avatar); }
+        const mul=document.createElement('div'); mul.className='mult'; mul.textContent=`× ${cumulativeMultiplier(i).toFixed(2)}`;
+        wrap.appendChild(box); wrap.appendChild(mul); trackEl.appendChild(wrap);
+      }
+      ensureTrackScroll();
+    }
+
+    function ensureTrackScroll(){
+      if(!viewport) return;
+      const targetIdx = Math.min(MAX_STAGE, Math.max(1, state.stage + 1));
+      const el = trackEl.querySelector(`[data-stage="${targetIdx}"]`);
+      if(!el) return;
+      const left = el.offsetLeft - Math.max(0, (viewport.clientWidth - el.clientWidth)/2);
+      viewport.scrollTo({ left, behavior: 'smooth' });
+    }
+
+    // --- TILEBOARD ---
+    function renderTiles(){
+      tilegridEl.innerHTML = '';
+      if(!state.running || state.stage >= MAX_STAGE){ tileboardEl.style.display='none'; return; }
+      const idx = state.stage; // 0-based current stage index
+      const tiles = TILES[idx];
+      const bombs = BOMBS[idx];
+      tileboardEl.style.display='block';
+      metaStage.textContent = `${idx+1}단계`;
+      metaProb.textContent  = `성공확률 ${(PROB[idx]*100).toFixed(2)}%`;
+      metaTiles.textContent = `타일 ${tiles}`;
+      metaBombs.textContent = `폭탄 ${bombs}`;
+      for(let i=1;i<=tiles;i++){
+        const t=document.createElement('div'); t.className='tile'; t.dataset.index=i; t.textContent=i;
+        t.addEventListener('click', ()=> handleTileClick(i));
+        tilegridEl.appendChild(t);
+      }
+    }
+
+    function handleTileClick(choice){
+      if(!state.running) return;
+      const idx = state.stage; const tiles=TILES[idx]; const bombs=BOMBS[idx];
+      const successProb = (tiles - bombs) / tiles;
+      const success = Math.random() < successProb; // equals PROB[idx]
+
+      const chosenEl = tilegridEl.querySelector(`.tile[data-index="${choice}"]`);
+      const allEls = Array.from(tilegridEl.querySelectorAll('.tile'));
+
+      if(!success){
+        if(chosenEl){ chosenEl.classList.add('bomb'); chosenEl.textContent='💣'; }
+        // 실패 즉시 종료
+        updateUI(`❌ <b>${idx+1}단계 실패!</b> 폭탄을 밟았습니다.<br/>다시 시작하려면 <b>Reset</b> 또는 <b>Game Start</b>를 누르세요.`, 'lose');
+        endRound();
+        return;
+      }
+
+      // 성공: 선택 타일 안전, 나머지에 폭탄 랜덤 배치 후 표시
+      if(chosenEl){ chosenEl.classList.add('safe'); chosenEl.textContent='✅'; }
+      const others = [...Array(tiles).keys()].map(n=>n+1).filter(n=>n!==choice);
+      const bombPos = sample(others, bombs);
+      for(const n of bombPos){ const el=tilegridEl.querySelector(`.tile[data-index="${n}"]`); if(el){ el.classList.add('bomb'); el.textContent='💣'; } }
+
+      state.history[idx] = true; // 기록
+      state.stage++;
+
+      if(state.stage >= MAX_STAGE){
+        const payout = Math.floor(state.bet * cumulativeMultiplier(state.stage));
+        updateUI(`🎉 <b>${MAX_STAGE}단계 전부 성공!</b> 자동 Cash Out으로 <b>${formatKRW(payout)}</b> 획득했습니다.`, 'win');
+        endRound();
+        return;
+      }
+
+      updateUI(`✅ <b>${idx+1}단계 성공!</b> 다음 단계에서 타일을 선택하세요.`, 'win');
+    }
+
+    function sample(arr, k){
+      const a = arr.slice();
+      for(let i=a.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [a[i],a[j]]=[a[j],a[i]]; }
+      return a.slice(0, Math.min(k, a.length));
+    }
+
+    // --- UI ---
+    function formatKRW(n){ return n.toLocaleString('ko-KR',{style:'currency',currency:'KRW',maximumFractionDigits:0}); }
+
+    function updateUI(msg, type='info'){
+      stageVal.textContent = state.running ? `${state.stage} / ${MAX_STAGE}` : '-';
+      const cashAmt = state.bet * cumulativeMultiplier(state.stage);
+      cashoutVal.textContent = state.running ? `${formatKRW(cashAmt)}` : '-';
+      banner.className = `banner ${type}`; banner.innerHTML = msg;
+      betInput.disabled = state.running; startBtn.disabled = state.running; resetBtn.disabled = !state.running;
+      cashBtn.disabled = !state.running || state.stage === 0;
+      renderTrack();
+      renderTiles();
+      ensureTrackScroll();
+    }
+
+    // --- GAME FLOW ---
+    function startGame(){
+      const bet = Number(betInput.value);
+      if(!Number.isFinite(bet) || bet<=0){ alert('베팅 금액을 올바르게 입력하세요.'); return; }
+      state.bet = Math.floor(bet); state.stage = 0; state.running = true; state.history = Array.from({length:MAX_STAGE},()=>null);
+      updateUI(`라운드 시작! <b>${formatKRW(state.bet)}</b> 베팅했습니다.<br/>타일을 클릭해 1단계를 도전하세요.`, 'info');
+    }
+
+    function doCashOut(){ if(!state.running) return; const payout=Math.floor(state.bet*cumulativeMultiplier(state.stage)); updateUI(`💰 Cash Out! <b>${state.stage}단계</b>에서 <b>${formatKRW(payout)}</b> 수령했습니다.`, 'win'); endRound(); }
+
+    function endRound(){ state.running=false; betInput.disabled=false; startBtn.disabled=false; resetBtn.disabled=false; cashBtn.disabled=true; tileboardEl.style.display='none'; }
+    function hardReset(){ state={ bet:0, stage:0, running:false, history:Array.from({length:MAX_STAGE},()=>null) }; betInput.disabled=false; startBtn.disabled=false; resetBtn.disabled=true; cashBtn.disabled=true; stageVal.textContent='-'; cashoutVal.textContent='-'; banner.className='banner info'; banner.innerHTML='Game Start 후 타일을 클릭해 도전하세요.'; renderTrack(); tileboardEl.style.display='none'; }
+
+    // --- EVENTS ---
+    startBtn.addEventListener('click', startGame);
+    cashBtn.addEventListener('click', doCashOut);
+    resetBtn.addEventListener('click', hardReset);
+
+    // --- FIRST RENDER ---
+    renderTrack();
+  </script>
+</body>
+</html>
